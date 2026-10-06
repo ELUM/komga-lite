@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>komga-lite</title>
+{{template "style"}}
+</head>
+<body>
+<div class="topbar">
+  <h1>komga-lite</h1>
+  <span class="spacer"></span>
+  <a href="/logout">退出</a>
+</div>
+<div class="wrap">
+  {{if not .Libraries}}
+    {{if not .IsAdmin}}<p class="empty">还没有可用的书库。</p>{{end}}
+  {{end}}
+  <div class="grid" id="libgrid">
+    {{range .Libraries}}
+    <div class="card-wrap">
+      <a class="card" href="/libraries/{{.ID}}">
+        <div class="cap libcap">
+          <strong title="{{.Name}}">{{.Name}}</strong>
+          <small title="{{.Root}}">{{.Root}}</small>
+        </div>
+      </a>
+      {{if $.IsAdmin}}
+      <button class="cardmenu" title="管理" onclick="toggleMenu(event, {{.ID}})">&#8942;</button>
+      <div id="menu-{{.ID}}" class="menu hidden">
+        <div onclick="openEdit({{.ID}})">编辑</div>
+        <div class="menu-danger" onclick="delLibrary({{.ID}})">删除</div>
+      </div>
+      {{end}}
+    </div>
+    {{end}}
+    {{if .IsAdmin}}
+    <div class="card addcard" onclick="openAdd()">＋ 添加书库</div>
+    {{end}}
+  </div>
+</div>
+
+<!-- 添加 / 编辑书库弹窗 -->
+<div id="libmodal" class="modal hidden">
+  <div class="modal-card" style="width:min(480px,92vw)">
+    <h2 id="libmodal-title" style="margin:0 0 14px;font-size:16px">添加书库</h2>
+    <label class="field">名称(留空使用目录名)
+      <input type="text" id="lib-name" placeholder="例如:我的漫画">
+    </label>
+    <label class="field">书库路径(服务器上的目录)
+      <span class="pathrow">
+        <input type="text" id="lib-path" placeholder="点击右侧「浏览」选择目录">
+        <button type="button" onclick="openBrowser()">浏览…</button>
+      </span>
+    </label>
+    <span id="lib-msg" class="err"></span>
+    <div class="brow" style="justify-content:flex-end">
+      <button type="button" onclick="closeLibModal()">取消</button>
+      <button type="button" class="primary" id="libmodal-ok" onclick="saveLibrary()">添加并扫描</button>
+    </div>
+  </div>
+</div>
+
+<!-- 目录浏览弹窗 -->
+<div id="browser" class="modal hidden">
+  <div class="modal-card">
+    <div class="brow">
+      <button type="button" id="btn-up" onclick="goParent()">↑ 上级</button>
+      <span id="cur-path" class="curpath">此电脑</span>
+      <button type="button" onclick="closeBrowser()">取消</button>
+    </div>
+    <ul id="dirlist" class="dirlist"></ul>
+    <div class="brow" style="justify-content:flex-end">
+      <button type="button" class="primary" onclick="chooseDir()">选择当前目录</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LIBS = {{.Libs}};
+let editingId = 0;   // 0 = 添加模式
+let cur = {path: '', parent: ''};
+
+function findLib(id) { return LIBS.find(l => l.id === id); }
+
+/* ---------- ⋮ 菜单 ---------- */
+function toggleMenu(ev, id) {
+  ev.preventDefault();
+  ev.stopPropagation();
+  document.querySelectorAll('.menu').forEach(m => { if (m.id !== 'menu-' + id) m.classList.add('hidden'); });
+  document.getElementById('menu-' + id).classList.toggle('hidden');
+}
+document.addEventListener('click', () => {
+  document.querySelectorAll('.menu').forEach(m => m.classList.add('hidden'));
+});
+
+/* ---------- 添加 / 编辑 ---------- */
+function openAdd() {
+  editingId = 0;
+  document.getElementById('libmodal-title').textContent = '添加书库';
+  document.getElementById('libmodal-ok').textContent = '添加并扫描';
+  document.getElementById('lib-name').value = '';
+  document.getElementById('lib-path').value = '';
+  document.getElementById('lib-msg').textContent = '';
+  document.getElementById('libmodal').classList.remove('hidden');
+}
+
+function openEdit(id) {
+  const lib = findLib(id);
+  if (!lib) return;
+  editingId = id;
+  document.getElementById('libmodal-title').textContent = '编辑书库';
+  document.getElementById('libmodal-ok').textContent = '保存';
+  document.getElementById('lib-name').value = lib.name;
+  document.getElementById('lib-path').value = lib.root;
+  document.getElementById('lib-msg').textContent = '';
+  document.getElementById('libmodal').classList.remove('hidden');
+}
+
+function closeLibModal() { document.getElementById('libmodal').classList.add('hidden'); }
+
+async function saveLibrary() {
+  const msg = document.getElementById('lib-msg');
+  msg.textContent = '';
+  const body = {
+    name: document.getElementById('lib-name').value,
+    root: document.getElementById('lib-path').value
+  };
+  const res = await fetch(editingId ? '/admin/api/libraries/' + editingId : '/admin/api/libraries', {
+    method: editingId ? 'PUT' : 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify(body)
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.error) { msg.textContent = data.error || '操作失败'; return; }
+  location.reload();
+}
+
+async function delLibrary(id) {
+  const lib = findLib(id);
+  if (!confirm('确定删除书库「' + (lib ? lib.name : id) + '」?其下的系列、书籍与阅读进度都会被移除(磁盘文件不受影响)。')) return;
+  const res = await fetch('/admin/api/libraries/' + id, {method: 'DELETE'});
+  if (!res.ok) { alert('删除失败'); return; }
+  location.reload();
+}
+
+/* ---------- 目录浏览器 ---------- */
+async function openBrowser() {
+  document.getElementById('browser').classList.remove('hidden');
+  await load('');
+}
+
+async function load(path) {
+  const res = await fetch('/admin/api/fs?path=' + encodeURIComponent(path));
+  if (!res.ok) { alert('读取目录失败'); return; }
+  cur = await res.json();
+  document.getElementById('cur-path').textContent = cur.path || '此电脑';
+  document.getElementById('btn-up').style.visibility = cur.parent ? 'visible' : 'hidden';
+  const ul = document.getElementById('dirlist');
+  ul.innerHTML = '';
+  if (!cur.dirs.length) {
+    const li = document.createElement('li');
+    li.className = 'nodirs';
+    li.textContent = '(没有子目录)';
+    ul.appendChild(li);
+  }
+  for (const d of cur.dirs) {
+    const li = document.createElement('li');
+    li.textContent = d.name;
+    li.onclick = () => load(d.path);
+    ul.appendChild(li);
+  }
+}
+
+function goParent() { if (cur.parent) load(cur.parent); }
+
+function chooseDir() {
+  if (!cur.path) { alert('请先进入一个具体目录'); return; }
+  document.getElementById('lib-path').value = cur.path;
+  closeBrowser();
+}
+
+function closeBrowser() { document.getElementById('browser').classList.add('hidden'); }
+</script>
+</body>
+</html>

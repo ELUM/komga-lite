@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>登录 · komga-lite</title>
+{{template "style"}}
+</head>
+<body class="center">
+<form class="card" method="post" action="/login">
+  <h1 style="margin:0;text-align:center">komga-lite</h1>
+  {{if .Error}}<p class="err" style="margin:0">{{.Error}}</p>{{end}}
+  <label>邮箱
+    <input type="email" name="email" required autofocus>
+  </label>
+  <label>密码
+    <input type="password" name="password" required>
+  </label>
+  <button type="submit">登录</button>
+</form>
+</body>
+</html>

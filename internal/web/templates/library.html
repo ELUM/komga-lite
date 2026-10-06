@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Lib.Name}} · komga-lite</title>
+{{template "style"}}
+</head>
+<body>
+<div class="topbar">
+  <a href="/">← 返回</a>
+  <h1>{{.Lib.Name}}</h1>
+  <span class="spacer"></span>
+  <button onclick="scan({{.Lib.ID}})">扫描此库</button>
+</div>
+<div class="wrap">
+  {{if not .Series}}
+    <p class="empty">库是空的:把 zip/cbz 放进「库目录/系列名/」结构的子目录后点上方扫描。</p>
+  {{end}}
+  <div class="grid">
+    {{range .Series}}
+    <a class="card" href="/series/{{.ID}}">
+      <img src="/api/v1/series/{{.ID}}/thumbnail" alt=""
+           onerror="this.style.visibility='hidden'">
+      <div class="cap">
+        <strong>{{.Name}}</strong><br>
+        <small>{{.BookCount}} 册 · 未读 {{.UnreadCount}}</small>
+      </div>
+    </a>
+    {{end}}
+  </div>
+</div>
+<script>
+function scan(id) {
+  fetch('/api/v1/libraries/' + id + '/scan', { method: 'POST' })
+    .then(function () { alert('已开始扫描,稍后刷新页面'); })
+    .catch(function () { alert('扫描失败'); });
+}
+</script>
+</body>
+</html>

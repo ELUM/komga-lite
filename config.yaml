@@ -1,0 +1,9 @@
+# komga-lite 配置
+# 书库不在这里配置:启动服务后,用管理员账号登录网页,在「管理」页添加。
+
+# 监听端口(默认 8080)
+port: 8090
+# SQLite 数据库路径
+database: data/komga-lite.db
+# 是否记录请求/响应体日志(调试用,默认 true)
+# logBodies: false

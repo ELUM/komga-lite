@@ -1,0 +1,16 @@
+# 运行数据(SQLite 数据库、会话密钥、封面缓存)
+data/
+
+# 编译产物
+*.exe
+komga-lite-linux-arm7
+komga-lite-linux*
+dist/
+
+# 测试书库(go run ./tools/mktestdata 可重新生成;含本地漫画文件,勿上传)
+testdata/
+
+# 日志与临时文件
+*.log
+t_*
+*.tmp

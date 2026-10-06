@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Book.Name}} · komga-lite</title>
+{{template "style"}}
+</head>
+<body class="reader">
+<div class="zones">
+  {{if .Prev}}<a href="?page={{.Prev}}" aria-label="上一页"></a>{{else}}<span></span>{{end}}
+  {{if .Next}}<a href="?page={{.Next}}" aria-label="下一页"></a>{{else}}<span></span>{{end}}
+</div>
+<img class="page" src="/api/v1/books/{{.Book.ID}}/page/{{.Page}}" alt="第 {{.Page}} 页">
+<div class="bar">
+  <a href="/series/{{.Book.SeriesID}}">返回目录</a>
+  {{if .Prev}}<a href="?page={{.Prev}}">上一页</a>{{end}}
+  {{if .Next}}<a href="?page={{.Next}}">下一页</a>{{end}}
+  {{if .IsAdmin}}
+  <a href="javascript:void(0)" onclick="setCover()" id="cover-link">设为封面</a>
+  {{end}}
+  <span class="spacer"></span>
+  <span>{{.Page}} / {{.Total}}</span>
+</div>
+<script>
+// 方向键翻页
+document.addEventListener('keydown', function (e) {
+  if (e.key === 'ArrowRight' || e.key === ' ' ) { if ({{.Next}}) location.href = '?page={{.Next}}'; }
+  if (e.key === 'ArrowLeft') { if ({{.Prev}}) location.href = '?page={{.Prev}}'; }
+});
+// 上报阅读进度,与 Koharia 等客户端共享
+fetch('/api/v1/books/{{.Book.ID}}/read-progress', {
+  method: 'PATCH',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ page: {{.Page}} }),
+  keepalive: true
+}).catch(function () {});
+{{if .IsAdmin}}
+// 将当前页设为封面(上传为用户封面,恢复默认可在系列页删除)
+async function setCover() {
+  const link = document.getElementById('cover-link');
+  link.textContent = '设置中…';
+  try {
+    const res = await fetch('/api/v1/books/{{.Book.ID}}/page/{{.Page}}');
+    if (!res.ok) throw new Error('读取页面失败');
+    const blob = await res.blob();
+    const fd = new FormData();
+    fd.append('file', blob, 'cover-' + {{.Page}} + '.img');
+    const up = await fetch('/api/v1/books/{{.Book.ID}}/thumbnails', { method: 'POST', body: fd });
+    if (!up.ok) throw new Error('上传失败');
+    link.textContent = '已设为封面 ✓';
+  } catch (e) {
+    link.textContent = '设为封面';
+    alert('设置封面失败: ' + e.message);
+  }
+}
+{{end}}
+</script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{.Series.Name}} · komga-lite</title>
+{{template "style"}}
+</head>
+<body>
+<div class="topbar">
+  <a href="/libraries/{{.Series.LibraryID}}">← 返回</a>
+  <h1>{{.Series.Name}}</h1>
+  <span class="spacer"></span>
+  <small>{{.Series.BookCount}} 册</small>
+</div>
+<div class="wrap">
+  {{if not .Books}}
+    <p class="empty">此系列还没有可读的书籍。</p>
+  {{end}}
+  <div class="rows">
+    {{range .Books}}
+    <a class="row" href="/books/{{.ID}}/read">
+      <img src="/api/v1/books/{{.ID}}/thumbnail" alt=""
+           onerror="this.style.visibility='hidden'">
+      <span class="title">{{.Name}}</span>
+      <small>{{if .PagesCount.Valid}}{{.PagesCount.Int64}} 页{{else}}不可读({{.MediaStatus}}){{end}}</small>
+      <small>{{progressLabel .}}</small>
+    </a>
+    {{end}}
+  </div>
+</div>
+</body>
+</html>
